@@ -1,0 +1,19 @@
+[sigaev.ru]
+webui=gitweb
+urlprefix=/git/gitweb.cgi
+priority=70
+[git.postgresql.org]
+webui=gitweb
+urlprefix=/gitweb/
+pathprefix=/git/
+priority=80
+[wagner.pp.ru]
+aliases=www.wagner.pp.ru
+webui=gitweb
+pathprefix=/git/
+urlprefix=/gitweb
+priority=70
+[git.postgrespro.ru]
+aliases=git.l.postgrespro.ru gitlab.postgrespro.ru
+webui=gitlab
+priority=50

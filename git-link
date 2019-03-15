@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""
+Script which prints jira-style link to the current or specified
+GIT commit. Script should start from the GIT working directory.
+Commit hash can be specified as optional argument in any form
+from what format %h would return to what %H would return
+
+Script do some magic to reformat remote git repository path as shown
+by git remote -v to url of git web interface.
+
+Additional web sites can be added via ~/.git-link file which has
+ini-style format like:
+ 
+
+  [ site.somewhere.org ]
+  webui = gitlab
+  aliases = git.somewhere.org gitlab.somewhere.org
+  priority = 1
+
+If you want more webui types, just add method to format URLs into Site
+object.
+"""
+import re,os,sys,os.path
+import configparser
+from urllib.parse import urlparse
+sitemap={}
+
+class Site:
+    """
+    Class Site holds information about git site.
+    It should be passed at least hostname and webui type
+    (one of "github","gitlab","gitweb").
+    Also it can have list of aliases (alternate hostnames),
+    priority
+    and parameters specific for webui type (for now only gitweb 
+    has such parameters)
+    """
+    def __init__(self,host,webui,priority=100,aliases=[],**kwargs):
+        self.host=host
+        self.format=getattr(self,webui)
+        if webui == 'gitweb':
+            self.urlprefix="/"
+            self.pathprefix="/"
+        self.priority=priority
+        sitemap[self.host]=self
+        for h in aliases:
+            sitemap[h]=self
+        for key in kwargs:
+            setattr(self,key,kwargs[key])
+    def gitlab(self,path):
+        if path.endswith(".git"):
+            path=path[:-4]
+        return "https://{host}/{path}/commit/%H".format(host=self.host,path=path)
+
+    github=gitlab
+
+    def gitweb(self,path):
+        if self.pathprefix and path.startswith(self.pathprefix):
+            path=path[len(self.pathprefix):]
+        return "https://{host}{urlprefix}?p={path};a=commitdiff;h=%H".format(
+            host=self.host,
+            path=path,
+            urlprefix=self.urlprefix
+         )
+            
+# Define some builtin sites   
+Site('github.com', webui='github', priority=60)
+#read more ones from configuration file
+config=configparser.ConfigParser()
+config.read(os.path.expanduser("~/.git-link"))
+for sect in config.sections():
+    siteattrs={}
+    for key in config[sect]:
+         value=config[sect][key]
+         if key == 'alaises':
+            value=value.split()
+         siteattrs[key]=value   
+    Site(sect,**siteattrs)
+
+# Read list of remotes from git and parse push urls
+f=os.popen("git remote -v","r")
+host=None
+path=None
+for l in f:
+    (name,remote,direction)=l.split()
+    if direction != "(push)":
+        continue 
+    if re.match("\w+://",remote):
+        n=urlparse(remote)
+        newhost=n.hostname
+        newpath=n.path
+    else:
+        m=re.match("(\w+)@([\w.]+):(.*)$",remote)
+        if not m:
+            print("Uncomprehandable path %s"%remote,file=sys.stderr)
+            continue
+        newhost=m.group(2)
+        newpath="/"+m.group(3)
+    if not newhost in sitemap:
+        print("Unknown git site %s add to ~/.git-link"%newhost,file=sys.stderr)
+        continue
+    if not host or sitemap[newhost].priority < host.priority:
+        host,path,= sitemap[newhost],newpath
+if host is None:
+   print("No usable git sites found among remotes",file=sys.stderr)
+   sys.exit(1)
+
+
+if len(sys.argv)>1:
+    commit_id=sys.argv[1]
+else:
+    commit_id=""
+os.system("git show \"--format=format:[%h|"+host.format(path)+"]\" --no-patch "+commit_id)
+
+
