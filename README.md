@@ -14,12 +14,19 @@ DESCRIPTION
 ===========
 
 **git-link** command when placed somewhere in your PATH, would be
-invoked as **link** submcommand of **git**(1). It outputs link in the
-format useful to pasting into **JIRA** or **Confluence**. Feel free to
-change this.
+invoked as **link** submcommand of **git**(1).
 
 When invoked inside GIT repository, it outputs link to the web
-interface of remote git site which displays specified commit.
+interface of remote git site which displays specified commit. (or
+current HEAD if none was specified).
+
+You can specify any number of commit hash digits, which uniquely
+identify commit. It would be canonized - output of format **%h** of
+**git-show** used for link text and full hash in URL.
+
+It outputs link in the
+format useful to pasting into **JIRA** or **Confluence**. Feel free to
+change this.
 
 It recognizes two types of GIT web UI - **github** and **gitweb**.
 **gitlab** for purposes of this scritp
