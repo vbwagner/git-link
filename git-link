@@ -41,8 +41,10 @@ class Site:
         if webui == 'gitweb':
             self.urlprefix="/"
             self.pathprefix="/"
-        self.priority=priority
+        self.priority=int(priority)
         sitemap[self.host]=self
+        if not isinstance(aliases,list):
+            aliases = aliases.split()
         for h in aliases:
             sitemap[h]=self
         for key in kwargs:
@@ -100,7 +102,7 @@ for l in f:
         print("Unknown git site %s add to ~/.git-link"%newhost,file=sys.stderr)
         continue
     if not host or sitemap[newhost].priority < host.priority:
-        host,path,= sitemap[newhost],newpath
+        host,path = sitemap[newhost],newpath
 if host is None:
    print("No usable git sites found among remotes",file=sys.stderr)
    sys.exit(1)
